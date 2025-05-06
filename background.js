@@ -1,7 +1,3 @@
-/*
-Called when the item has been created, or when creation failed due to an error.
-We'll just log success/failure here.
-*/
 function onCreated() {
   if (browser.runtime.lastError) {
     console.log(`Error: ${browser.runtime.lastError}`);
@@ -10,151 +6,64 @@ function onCreated() {
   }
 }
 
-/*
-Called when the item has been removed.
-We'll just log success here.
-*/
-function onRemoved() {
-  console.log("Item removed successfully");
+const instructions = `
+You will be provided with selected quiz question, think carefully through the question, then give the answer clearly
+If it doesnt seem like a question, say "not enough context"
+`;
+
+async function aiQuery(info) {
+  let res = await browser.storage.sync.get('api_key');
+  await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer `+ res.api_key
+    },
+    body: JSON.stringify({
+      model: "o4-mini",
+      reasoning: {"effort": "medium"},
+      input: [
+        { role: "system", content: instructions },
+        { role: "user", content: info.selectionText }
+      ]
+    })
+  })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Response:', data);
+        console.log('Generated Text:', data.output[1].content[0].text);
+        updateSidebar(data.output[1].content[0].text)
+      });
 }
 
-/*
-Called when there was an error.
-We'll just log the error here.
-*/
-function onError(error) {
-  console.log(`Error: ${error}`);
+async function updateSidebar(text) {
+  await browser.runtime.sendMessage({
+    type: 'updateSidebar',
+    content: text
+  })
 }
 
-/*
-Create all the context menu items.
-*/
 browser.menus.create({
-  id: "log-selection",
-  title: browser.i18n.getMessage("menuItemSelectionLogger"),
+  id: "ai_query",
+  title: browser.i18n.getMessage("ai_query"),
   contexts: ["selection"]
 }, onCreated);
 
-browser.menus.create({
-  id: "remove-me",
-  title: browser.i18n.getMessage("menuItemRemoveMe"),
-  contexts: ["all"]
-}, onCreated);
-
-browser.menus.create({
-  id: "separator-1",
-  type: "separator",
-  contexts: ["all"]
-}, onCreated);
-
-browser.menus.create({
-  id: "greenify",
-  type: "radio",
-  title: browser.i18n.getMessage("menuItemGreenify"),
-  contexts: ["all"],
-  checked: true,
-  icons: {
-    "16": "icons/paint-green-16.png",
-    "32": "icons/paint-green-32.png"
-  }
-}, onCreated);
-
-browser.menus.create({
-  id: "bluify",
-  type: "radio",
-  title: browser.i18n.getMessage("menuItemBluify"),
-  contexts: ["all"],
-  checked: false,
-  icons: {
-    "16": "icons/paint-blue-16.png",
-    "32": "icons/paint-blue-32.png"
-  }
-}, onCreated);
-
-browser.menus.create({
-  id: "separator-2",
-  type: "separator",
-  contexts: ["all"]
-}, onCreated);
-
-browser.menus.create({
-  id: "check-uncheck",
-  type: "checkbox",
-  title: browser.i18n.getMessage("menuItemUncheckMe"),
-  contexts: ["all"],
-  checked: true,
-}, onCreated);
-
-browser.menus.create({
-  id: "open-sidebar",
-  title: browser.i18n.getMessage("menuItemOpenSidebar"),
-  contexts: ["all"],
-  command: "_execute_sidebar_action"
-}, onCreated);
-
-browser.menus.create({
-  id: "tools-menu",
-  title: browser.i18n.getMessage("menuItemToolsMenu"),
-  contexts: ["tools_menu"],
-}, onCreated);
-
-/*
-Set a colored border on the document in the given tab.
-
-Note that this only work on normal web pages, not special pages
-like about:debugging.
-*/
-let blue = 'document.body.style.border = "5px solid blue"';
-let green = 'document.body.style.border = "5px solid green"';
-
-function borderify(tabId, color) {
-  browser.tabs.executeScript(tabId, {
-    code: color
-  });
-}
-
-/*
-Update the menu item's title according to current "checked" value.
-*/
-function updateCheckUncheck(checkedState) {
-  if (checkedState) {
-    browser.menus.update("check-uncheck", {
-      title: browser.i18n.getMessage("menuItemUncheckMe"),
-    });
-  } else {
-    browser.menus.update("check-uncheck", {
-      title: browser.i18n.getMessage("menuItemCheckMe"),
-    });
-  }
-}
-
-/*
-The click event listener, where we perform the appropriate action given the
-ID of the menu item that was clicked.
-*/
-browser.menus.onClicked.addListener((info, tab) => {
+browser.menus.onClicked.addListener(async (info, tab) => {
   switch (info.menuItemId) {
-    case "log-selection":
-      console.log(info.selectionText);
-      break;
-    case "remove-me":
-      let removing = browser.menus.remove(info.menuItemId);
-      removing.then(onRemoved, onError);
-      break;
-    case "bluify":
-      borderify(tab.id, blue);
-      break;
-    case "greenify":
-      borderify(tab.id, green);
-      break;
-    case "check-uncheck":
-      updateCheckUncheck(info.checked);
-      break;
-    case "open-sidebar":
-      console.log("Opening my sidebar");
-      break;
-    case "tools-menu":
-      console.log("Clicked the tools menu item");
-      break;
+    case "ai_query": {
+      await browser.sidebarAction.open()
+      await aiQuery(info);
+    }
   }
 });
+
+
+
+
+

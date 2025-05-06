@@ -1,16 +1,19 @@
-<!DOCTYPE html>
+* {
+    font-family: sans-serif, serif;
+    font-size: 16px;
+}
 
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="color-scheme" content="dark light">
-    <link rel="stylesheet" href="options.css">
-</head>
+div {
+    width: 90%;
+    border: 2px solid dimgray;
+    padding-bottom: 200%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 5%;
+    border-radius: 25px;
+}
 
-<body>
-    <div>
-    
-    </div>
-</body>
-
-</html>
+p {
+    padding-left: 5%;
+    color: lightgray;
+}
