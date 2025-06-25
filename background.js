@@ -12,6 +12,7 @@ If it doesnt seem like a question, say "not enough context"
 `;
 
 async function aiQuery(info) {
+  // await updateSidebar(" Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch ")
   let res = await browser.storage.sync.get('api_key');
   await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
